@@ -1,0 +1,541 @@
+{
+  "name": "lead gen",
+  "nodes": [
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{$('AI Agent').item.json.output .replace(/\\[LEAD_DATA\\]\\{[\\s\\S]*?\\}/g, '').trim() }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        432,
+        -64
+      ],
+      "id": "1fb2486a-c295-4b97-a99a-76998ccfc59f",
+      "name": "Send a text message",
+      "webhookId": "8aa8683a-ae82-4086-99ce-56ad93edcd59",
+      "credentials": {
+        "telegramApi": {
+          "id": "8P1mfMKcwckLgZcO",
+          "name": "lead_genera_bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text }}",
+        "options": {
+          "systemMessage": "=You are a professional real estate lead qualification assistant. Your goal is to collect customer information, ask 6 qualification questions one at a time, calculate their lead score, and output structured data at the end.\n\n## STEP 1: Collect Basic Info First\nAsk for:\n1. Full Name\n2. Phone Number\n\n## STEP 2: Ask These 6 Questions (ONE AT A TIME, strictly in order)\n\n**Q1 - Property Type**\nAsk: \"What type of property are you looking for? (Apartment / Villa / Commercial)\"\nScoring: Apartment = 10 pts | Villa = 15 pts | Commercial = 10 pts\n\n**Q2 - Buy or Rent**\nAsk: \"Are you looking to buy or rent?\"\nScoring: Buy = 15 pts | Rent = 5 pts\n\n**Q3 - New or Resale**\nAsk: \"Do you prefer a new property or a resale?\"\nScoring: New = 10 pts | Resale = 10 pts\n\n**Q4 - First Property Purchase**\nAsk: \"Is this your first property purchase? (Yes / No)\"\nScoring: Yes = 5 pts | No = 10 pts\n\n**Q5 - Timeline**\nAsk: \"When are you planning to make a decision?\"\nOptions to show: Immediately / Within 1 month / 1–3 months / 3–6 months / 6+ months\nScoring: Immediately = 20 pts | Within 1 month = 15 pts | 1–3 months = 10 pts | 3–6 months = 5 pts | 6+ months = 0 pts\n\n**Q6 - Budget Range**\nAsk: \"What is your budget range?\"\nOptions to show: Above $1,000,000 / $700,000–$1,000,000 / $400,000–$700,000 / $200,000–$400,000 / Below $200,000\nScoring: Above $1,000,000 = 20 pts | $700k–$1M = 15 pts | $400k–$700k = 10 pts | $200k–$400k = 5 pts | Below $200k = 0 pts\n\n## STEP 3: Calculate Score\n- Add all points. Maximum raw score = 90\n- Normalize to 100: final_score = ROUND((raw_score / 90) * 100)\n\n## STEP 4: After ALL answers are collected, output EXACTLY this on a new line:\n[LEAD_DATA]{\"name\":\"FULL_NAME\",\"phone\":\"PHONE_NUMBER\",\"property_type\":\"VALUE\",\"buy_or_rent\":\"VALUE\",\"new_or_resale\":\"VALUE\",\"first_purchase\":\"VALUE\",\"timeline\":\"VALUE\",\"budget\":\"VALUE\",\"raw_score\":NUMBER,\"score\":NUMBER}\n\nThen add closing message:\n- If score >= 80: \"🎉 Great news! Based on your profile, you qualify for a **priority consultation** with one of our top agents. Your appointment is being arranged and our team will contact you at [phone number] very soon!\"\n- If score 50–79: \"Thank you! Your information has been recorded. Our team will review your profile and reach out to you with great property options.\"\n- If score < 50: \"Thank you for your time! We've noted your details and will keep you informed of properties that match your needs.\"\n\n## IMPORTANT RULES:\n- Ask ONE question at a time only\n- Be friendly, warm, and professional\n- If an answer is unclear, politely ask for clarification\n- Never skip a question\n- Always output [LEAD_DATA] tag at the very end, after the last question is answered\n- Do NOT reveal scores or points to the customer during the conversation"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -16,
+        0
+      ],
+      "id": "8c74d799-632b-4a2d-a856-b8146aa6ce7c",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-haiku-4-5-20251001",
+          "mode": "list",
+          "cachedResultName": "Claude Haiku 4.5"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.5,
+      "position": [
+        -160,
+        208
+      ],
+      "id": "a0605d11-2bcd-46b2-994a-76eb4f47f485",
+      "name": "Anthropic Chat Model",
+      "credentials": {
+        "anthropicApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.message.chat.id }}",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        -16,
+        208
+      ],
+      "id": "363e8084-76a9-4cdf-bcfb-aa8d765f1fe6",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -272,
+        0
+      ],
+      "id": "01aedb6a-2f99-4358-879b-60c14fd9b1b5",
+      "name": "Telegram Trigger",
+      "webhookId": "31fb4bdd-f8ee-4b18-a69b-380072e50a8f",
+      "credentials": {
+        "telegramApi": {
+          "id": "8P1mfMKcwckLgZcO",
+          "name": "lead_genera_bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = $('AI Agent').item.json.output || '';\n\n// Find the [LEAD_DATA] tag in the agent's output\nconst match = output.match(/\\[LEAD_DATA\\](\\{.*?\\})/s);\n\nif (!match) {\n  // Conversation not finished yet, no data to save\n  return [{ json: { complete: false } }];\n}\n\n// Parse the JSON data\nconst data = JSON.parse(match[1]);\n\n// Calculate lead status\nlet lead_status;\nif (data.score >= 80) lead_status = '🔥 HOT LEAD';\nelse if (data.score >= 50) lead_status = '⚡ WARM LEAD';\nelse lead_status = '❄️ COLD LEAD';\n\nreturn [{\n  json: {\n    complete: true,\n    name:          data.name,\n    phone:         data.phone,\n    property_type: data.property_type,\n    buy_or_rent:   data.buy_or_rent,\n    new_or_resale: data.new_or_resale,\n    first_purchase:data.first_purchase,\n    timeline:      data.timeline,\n    budget:        data.budget,\n    raw_score:     data.raw_score,\n    score:         data.score,\n    lead_status:   lead_status\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        288,
+        176
+      ],
+      "id": "3829daf7-bcb6-470e-990f-6b159cf9ec06",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "186c6faf-3701-490a-8f31-d9a459827f6c",
+              "leftValue": "={{ $('Code in JavaScript').item.json.complete }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        672,
+        128
+      ],
+      "id": "fb6a6a03-0c78-4db7-971f-760438120ab7",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "19Lp7eu9pxnWrFtGvj3AD5zOvnsoa37__RuCyTBcaNBE",
+          "mode": "list",
+          "cachedResultName": "Lead generation",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/19Lp7eu9pxnWrFtGvj3AD5zOvnsoa37__RuCyTBcaNBE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/19Lp7eu9pxnWrFtGvj3AD5zOvnsoa37__RuCyTBcaNBE/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ $('Code in JavaScript').item.json.name }}",
+            "number": "={{ $('Code in JavaScript').item.json.phone }}",
+            "Property type": "={{ $('Code in JavaScript').item.json.property_type }}",
+            "buy or rent": "={{ $('Code in JavaScript').item.json.buy_or_rent }}",
+            "new or resale": "={{ $('Code in JavaScript').item.json.new_or_resale }}",
+            "Timeline": "={{ $('Code in JavaScript').item.json.timeline }}",
+            "First Purshase": "={{ $('Code in JavaScript').item.json.first_purchase }}",
+            "Budget": "={{ $('Code in JavaScript').item.json.budget }}",
+            "Raw Score": "={{ $('Code in JavaScript').item.json.raw_score }}",
+            "Score": "={{ $('Code in JavaScript').item.json.score }}",
+            "lead Status": "={{ $('Code in JavaScript').item.json.lead_status }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "number",
+              "displayName": "number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Property type",
+              "displayName": "Property type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "buy or rent",
+              "displayName": "buy or rent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "new or resale",
+              "displayName": "new or resale",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "First Purshase",
+              "displayName": "First Purshase",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Timeline",
+              "displayName": "Timeline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Budget",
+              "displayName": "Budget",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Raw Score",
+              "displayName": "Raw Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Score",
+              "displayName": "Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "lead Status",
+              "displayName": "lead Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        864,
+        -48
+      ],
+      "id": "689e55c5-5f46-419e-a550-99a924f8c852",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "tlQ9m9nr4m0uPPDq",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "7d6f5567-e9eb-4a68-b0d4-d1cec405574e",
+              "leftValue": "={{ $json.Score }}",
+              "rightValue": 80,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1056,
+        -48
+      ],
+      "id": "087d1dee-2f5a-4376-bf00-a869d496dd3e",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "steven.tawfik@ejust.edu.eg",
+          "mode": "list",
+          "cachedResultName": "steven.tawfik@ejust.edu.eg"
+        },
+        "start": "={{ $json.event_start }}",
+        "end": "={{ $json.event_end }}",
+        "additionalFields": {
+          "description": "={{ $json.event_description }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        1440,
+        96
+      ],
+      "id": "8523f8eb-4cbd-4d08-a197-137be99bc86a",
+      "name": "Create an event",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "mD6K4ODtAZuW037S",
+          "name": "Google Calendar OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nconst startDate = new Date();\nstartDate.setDate(startDate.getDate() + 2);\nstartDate.setHours(11, 0, 0, 0);\n\nconst endDate = new Date();\nendDate.setDate(endDate.getDate() + 2);\nendDate.setHours(17, 0, 0, 0);\n\nreturn [{\n  json: {\n    name:          data['Name'],\n    phone:         data['number'],\n    score:         data['Score'],\n    lead_status:   data['lead Status'],\n    property_type: data['Property type'],\n    budget:        data['Budget'],\n    timeline:      data['Timeline'],\n\n    event_start:       startDate.toISOString(),\n    event_end:         endDate.toISOString(),\n    event_title:       `🏠 Consultation — ${data['Name']}`,\n    event_description: `Lead Score: ${data['Score']}/100 ${data['lead Status']}\\nPhone: ${data['number']}\\nProperty: ${data['Property type']}\\nBudget: ${data['Budget']}\\nTimeline: ${data['Timeline']}`\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1248,
+        -192
+      ],
+      "id": "82062496-72ce-4173-8c76-1b689ec60469",
+      "name": "Code in JavaScript1"
+    }
+  ],
+  "pinData": {
+    "Telegram Trigger": [
+      {
+        "json": {
+          "update_id": 478775715,
+          "message": {
+            "message_id": 75,
+            "from": {
+              "id": 829625517,
+              "is_bot": false,
+              "first_name": "steven",
+              "last_name": "ayman",
+              "username": "steven294",
+              "language_code": "en"
+            },
+            "chat": {
+              "id": 829625517,
+              "first_name": "steven",
+              "last_name": "ayman",
+              "username": "steven294",
+              "type": "private"
+            },
+            "date": 1779644647,
+            "text": "yes"
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Send a text message": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Create an event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "43141ca5-5dd0-4b75-8e7d-8100fab8e7ca",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5f57232f68ecfe5be81495428d590a65e3e1cbd3d690ca6865d584e4e2b97c23"
+  },
+  "id": "dSOi04PFHX6vGG9p",
+  "tags": []
+}

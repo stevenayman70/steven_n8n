@@ -1,0 +1,435 @@
+{
+  "name": "🏠 Real Estate Lead Qualifier",
+  "nodes": [
+    {
+      "parameters": {
+        "public": true,
+        "initialMessages": "👋 Welcome! I'm your real estate qualification assistant.\n\nI'll ask you a few quick questions to understand your needs and find the best property match for you.\n\nLet's begin — what's your full name?",
+        "options": {}
+      },
+      "id": "75a83589-ba9d-4c4d-a5ba-5eefe31ad651",
+      "name": "Chat Trigger",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1776,
+        256
+      ],
+      "webhookId": "real-estate-lead-qualifier"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput }}",
+        "options": {
+          "systemMessage": "You are a professional real estate lead qualification assistant. Your goal is to collect customer information, ask 6 qualification questions one at a time, calculate their lead score, and output structured data at the end.\n\n## STEP 1: Collect Basic Info First\nAsk for:\n1. Full Name\n2. Phone Number\n\n## STEP 2: Ask These 6 Questions (ONE AT A TIME, strictly in order)\n\n**Q1 - Property Type**\nAsk: \"What type of property are you looking for? (Apartment / Villa / Commercial)\"\nScoring: Apartment = 10 pts | Villa = 15 pts | Commercial = 10 pts\n\n**Q2 - Buy or Rent**\nAsk: \"Are you looking to buy or rent?\"\nScoring: Buy = 15 pts | Rent = 5 pts\n\n**Q3 - New or Resale**\nAsk: \"Do you prefer a new property or a resale?\"\nScoring: New = 10 pts | Resale = 10 pts\n\n**Q4 - First Property Purchase**\nAsk: \"Is this your first property purchase? (Yes / No)\"\nScoring: Yes = 5 pts | No = 10 pts\n\n**Q5 - Timeline**\nAsk: \"When are you planning to make a decision?\"\nOptions to show: Immediately / Within 1 month / 1–3 months / 3–6 months / 6+ months\nScoring: Immediately = 20 pts | Within 1 month = 15 pts | 1–3 months = 10 pts | 3–6 months = 5 pts | 6+ months = 0 pts\n\n**Q6 - Budget Range**\nAsk: \"What is your budget range?\"\nOptions to show: Above $1,000,000 / $700,000–$1,000,000 / $400,000–$700,000 / $200,000–$400,000 / Below $200,000\nScoring: Above $1,000,000 = 20 pts | $700k–$1M = 15 pts | $400k–$700k = 10 pts | $200k–$400k = 5 pts | Below $200k = 0 pts\n\n## STEP 3: Calculate Score\n- Add all points. Maximum raw score = 90\n- Normalize to 100: final_score = ROUND((raw_score / 90) * 100)\n\n## STEP 4: After ALL answers are collected, output EXACTLY this on a new line:\n[LEAD_DATA]{\"name\":\"FULL_NAME\",\"phone\":\"PHONE_NUMBER\",\"property_type\":\"VALUE\",\"buy_or_rent\":\"VALUE\",\"new_or_resale\":\"VALUE\",\"first_purchase\":\"VALUE\",\"timeline\":\"VALUE\",\"budget\":\"VALUE\",\"raw_score\":NUMBER,\"score\":NUMBER}\n\nThen add closing message:\n- If score >= 80: \"🎉 Great news! Based on your profile, you qualify for a **priority consultation** with one of our top agents. Your appointment is being arranged and our team will contact you at [phone number] very soon!\"\n- If score 50–79: \"Thank you! Your information has been recorded. Our team will review your profile and reach out to you with great property options.\"\n- If score < 50: \"Thank you for your time! We've noted your details and will keep you informed of properties that match your needs.\"\n\n## IMPORTANT RULES:\n- Ask ONE question at a time only\n- Be friendly, warm, and professional\n- If an answer is unclear, politely ask for clarification\n- Never skip a question\n- Always output [LEAD_DATA] tag at the very end, after the last question is answered\n- Do NOT reveal scores or points to the customer during the conversation"
+        }
+      },
+      "id": "992abe61-2197-4f0a-8909-31dc8fd4f571",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        -1536,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "sessionKey": "={{ $('Chat Trigger').item.json.sessionId }}",
+        "contextWindowLength": 30
+      },
+      "id": "c33187fc-440e-43ad-8c9b-ec46e29ae24e",
+      "name": "Window Buffer Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -1536,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-sonnet-4-6",
+          "mode": "list",
+          "cachedResultName": "Claude Sonnet 4.6"
+        },
+        "options": {}
+      },
+      "id": "8377607c-31a1-4df6-94d3-9fa31d8f0280",
+      "name": "Claude Sonnet 4",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        -1728,
+        448
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = $input.first().json.output || '';\n\n// Look for the [LEAD_DATA] marker with JSON\nconst match = output.match(/\\[LEAD_DATA\\](\\{.*?\\})/);\n\nif (!match) {\n  // Conversation still in progress\n  return [{ json: { complete: false, output: output } }];\n}\n\ntry {\n  const leadData = JSON.parse(match[1]);\n  const score = leadData.score || 0;\n  \n  let leadStatus;\n  if (score >= 80) leadStatus = '🔥 HOT LEAD';\n  else if (score >= 50) leadStatus = '⚡ WARM LEAD';\n  else leadStatus = '❄️ COLD LEAD';\n  \n  return [{\n    json: {\n      complete: true,\n      name: leadData.name || '',\n      phone: leadData.phone || '',\n      property_type: leadData.property_type || '',\n      buy_or_rent: leadData.buy_or_rent || '',\n      new_or_resale: leadData.new_or_resale || '',\n      first_purchase: leadData.first_purchase || '',\n      timeline: leadData.timeline || '',\n      budget: leadData.budget || '',\n      raw_score: leadData.raw_score || 0,\n      score: score,\n      lead_status: leadStatus,\n      is_hot_lead: score >= 80,\n      output: output\n    }\n  }];\n} catch (e) {\n  return [{ json: { complete: false, output: output, parseError: e.message } }];\n}"
+      },
+      "id": "2eec179c-11ec-4a6c-b087-dfad82f95c49",
+      "name": "Parse Lead Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1280,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.complete }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c3c7be0a-998c-4aaf-84af-64e3da37ecc0",
+      "name": "Is Qualification Complete?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1152,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "19Lp7eu9pxnWrFtGvj3AD5zOvnsoa37__RuCyTBcaNBE",
+          "mode": "list",
+          "cachedResultName": "Lead generation",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/19Lp7eu9pxnWrFtGvj3AD5zOvnsoa37__RuCyTBcaNBE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/19Lp7eu9pxnWrFtGvj3AD5zOvnsoa37__RuCyTBcaNBE/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ $json.name }}",
+            "number": "={{ $json.phone }}",
+            "Property type": "={{ $json.property_type }}",
+            "buy or rent": "={{ $json.buy_or_rent }}",
+            "new or resale": "={{ $json.new_or_resale }}",
+            "First Purshase": "={{ $json.first_purchase }}",
+            "Timeline": "={{ $json.timeline }}",
+            "Budget": "={{ $json.budget }}",
+            "Score": "={{ $json.score }}",
+            "Raw Score": "={{ $json.raw_score }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "number",
+              "displayName": "number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Property type",
+              "displayName": "Property type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "buy or rent",
+              "displayName": "buy or rent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "new or resale",
+              "displayName": "new or resale",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "First Purshase",
+              "displayName": "First Purshase",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Timeline",
+              "displayName": "Timeline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Budget",
+              "displayName": "Budget",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Raw Score",
+              "displayName": "Raw Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Score",
+              "displayName": "Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "e7257e3e-230b-49b0-8b81-b07923d22cd4",
+      "name": "Save to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -976,
+        112
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "tlQ9m9nr4m0uPPDq",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c2",
+              "leftValue": "={{ $('Parse Lead Data').item.json.score }}",
+              "rightValue": 80,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "45e04175-ec3a-4cfd-ab14-acae08433af5",
+      "name": "Score >= 80?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -832,
+        64
+      ]
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "primary",
+          "mode": "list",
+          "cachedResultName": "primary"
+        },
+        "start": "={{ $now.plus({ days: 1 }).set({ hour: 10, minute: 0, second: 0, millisecond: 0 }).toISO() }}",
+        "end": "={{ $now.plus({ days: 1 }).set({ hour: 10, minute: 30, second: 0, millisecond: 0 }).toISO() }}",
+        "additionalFields": {
+          "description": "=🎯 Lead Score: {{ $('Parse Lead Data').item.json.score }}/100  {{ $('Parse Lead Data').item.json.lead_status }}\n\n📋 Profile Summary:\n• Property Type: {{ $('Parse Lead Data').item.json.property_type }}\n• Buy or Rent: {{ $('Parse Lead Data').item.json.buy_or_rent }}\n• New or Resale: {{ $('Parse Lead Data').item.json.new_or_resale }}\n• First Purchase: {{ $('Parse Lead Data').item.json.first_purchase }}\n• Timeline: {{ $('Parse Lead Data').item.json.timeline }}\n• Budget: {{ $('Parse Lead Data').item.json.budget }}\n\n📞 Phone: {{ $('Parse Lead Data').item.json.phone }}",
+          "summary": "=🏠 Real Estate Consultation — {{ $('Parse Lead Data').item.json.name }}"
+        }
+      },
+      "id": "f6a9c3b5-bbf5-4c2c-90b7-f3d23558a837",
+      "name": "Create Calendar Appointment",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        -640,
+        0
+      ],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "mD6K4ODtAZuW037S",
+          "name": "Google Calendar OAuth2 API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Chat Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Lead Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude Sonnet 4": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Buffer Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Lead Data": {
+      "main": [
+        [
+          {
+            "node": "Is Qualification Complete?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Qualification Complete?": {
+      "main": [
+        [
+          {
+            "node": "Save to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Score >= 80?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score >= 80?": {
+      "main": [
+        [
+          {
+            "node": "Create Calendar Appointment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "14ae072e-51db-4644-9178-e9bda1dc8ef5",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5f57232f68ecfe5be81495428d590a65e3e1cbd3d690ca6865d584e4e2b97c23"
+  },
+  "id": "7h42Knbf6TB8nMjC",
+  "tags": []
+}

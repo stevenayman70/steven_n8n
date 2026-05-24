@@ -1,0 +1,208 @@
+{
+  "name": "stock1_Add to stock",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        -240
+      ],
+      "id": "be4ab96b-0597-4616-8e31-f7cf433b5db9",
+      "name": "Telegram Trigger",
+      "webhookId": "980a2579-8fb2-425f-9bf6-95b4c466fdd5",
+      "credentials": {
+        "telegramApi": {
+          "id": "CKnRyBesrxuQrUtP",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const message = $input.first().json.message.text;\n\nconst items = message.split(' ');\nconst inventory = {};\n\nfor (const item of items) {\n  const [name, quantity] = item.split(':');\n  if (name && quantity) {\n    inventory[name.trim().toLowerCase()] = parseInt(quantity.trim());\n  }\n}\n\nreturn [\n  { json: { item: 'Burger', number: inventory['burger'] || 0 } },\n  { json: { item: 'Cheese', number: inventory['cheese'] || 0 } },\n  { json: { item: 'Bun', number: inventory['bun'] || 0 } }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        192,
+        -416
+      ],
+      "id": "e888cab0-8259-4e32-9f80-323ac2bc180c",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Telegram message (e.g. \"burger:10 cheese:6 bun:30\")\nconst message = $('Telegram Trigger').first().json.message.text;\nconst items = message.split(' ');\nconst toAdd = {};\n\nfor (const item of items) {\n  const [name, quantity] = item.split(':');\n  if (name && quantity) {\n    toAdd[name.trim().toLowerCase()] = parseInt(quantity.trim());\n  }\n}\n\n// Add to current stock from Google Sheets\nconst result = [];\nfor (const row of $input.all()) {\n  const item = row.json.Item;\n  const currentStock = Number(row.json.Number);\n  const addAmount = toAdd[item.toLowerCase()] || 0;\n  const newStock = currentStock + addAmount;\n  result.push({ json: { Item: item, Number: newStock } });\n}\n\nreturn result;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        -240
+      ],
+      "id": "e12514be-04c1-43f9-96b3-89832631b5de",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1wSt3jNUYPIqI943veVXQJEUdCD7V3QXnslL6xOHA7Hk",
+          "mode": "list",
+          "cachedResultName": "Stock",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wSt3jNUYPIqI943veVXQJEUdCD7V3QXnslL6xOHA7Hk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wSt3jNUYPIqI943veVXQJEUdCD7V3QXnslL6xOHA7Hk/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        288,
+        -240
+      ],
+      "id": "690a5bc4-7326-4ffb-aa79-a4e179eba4f0",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "tlQ9m9nr4m0uPPDq",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1wSt3jNUYPIqI943veVXQJEUdCD7V3QXnslL6xOHA7Hk",
+          "mode": "list",
+          "cachedResultName": "Stock",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wSt3jNUYPIqI943veVXQJEUdCD7V3QXnslL6xOHA7Hk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wSt3jNUYPIqI943veVXQJEUdCD7V3QXnslL6xOHA7Hk/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Number": "={{ $json.Number }}",
+            "Item": "={{ $json.Item }}"
+          },
+          "matchingColumns": [
+            "Item"
+          ],
+          "schema": [
+            {
+              "id": "Item",
+              "displayName": "Item",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Number",
+              "displayName": "Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        736,
+        -240
+      ],
+      "id": "53fc6f91-0064-42a3-8f3a-78875c3bb927",
+      "name": "Update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "tlQ9m9nr4m0uPPDq",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        []
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "b5f7d769-8bbb-4b64-87c8-466358776454",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5f57232f68ecfe5be81495428d590a65e3e1cbd3d690ca6865d584e4e2b97c23"
+  },
+  "id": "0UctTHj0NbvlxAig",
+  "tags": []
+}

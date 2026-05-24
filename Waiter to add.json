@@ -1,0 +1,599 @@
+{
+  "name": "Waiter to add",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "The Order",
+        "formDescription": "What is Your order",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "What Is the Order",
+              "fieldType": "checkbox",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Cheese burger"
+                  },
+                  {
+                    "option": "classic Burger"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "How Many Sandiwiches",
+              "fieldType": "number"
+            }
+          ]
+        },
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.5,
+      "position": [
+        -176,
+        0
+      ],
+      "id": "61089232-a1af-4ae4-8b9e-ccb6f7d2bb7d",
+      "name": "On form submission",
+      "webhookId": "ddfceec7-21b7-4134-ab5f-14c683ce00ff"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get used amounts from Code Node 1\nconst used = $('Code in JavaScript1').first().json;\nconst burgerUsed = used.burgerUsed;\nconst bunsUsed = used.bunsUsed;\nconst cheeseUsed = used.cheeseUsed;\n\n// Process each row from Google Sheets\nconst rows = $input.all();\nconst result = [];\n\nfor (const row of rows) {\n  const item = row.json.Item;\n  const currentStock = Number(row.json.Number);\n  let newStock = currentStock;\n\n  if (item === 'Burger') {\n    newStock = currentStock - burgerUsed;\n  } else if (item === 'Cheese') {\n    newStock = currentStock - cheeseUsed;\n  } else if (item === 'Bun') {\n    newStock = currentStock - bunsUsed;\n  }\n\n  result.push({ json: { Item: item, Number: newStock } });\n}\n\nreturn result;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        576,
+        -80
+      ],
+      "id": "a52016dd-133e-41be-80fd-be139d3e0fce",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1wSt3jNUYPIqI943veVXQJEUdCD7V3QXnslL6xOHA7Hk",
+          "mode": "list",
+          "cachedResultName": "Stock",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wSt3jNUYPIqI943veVXQJEUdCD7V3QXnslL6xOHA7Hk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wSt3jNUYPIqI943veVXQJEUdCD7V3QXnslL6xOHA7Hk/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Number": "={{ $json.Number }}",
+            "Item": "={{ $json.Item }}"
+          },
+          "matchingColumns": [
+            "Item"
+          ],
+          "schema": [
+            {
+              "id": "Item",
+              "displayName": "Item",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Number",
+              "displayName": "Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        768,
+        32
+      ],
+      "id": "6e0d8bdc-3517-4032-8114-1a62cc550064",
+      "name": "Update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "tlQ9m9nr4m0uPPDq",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const formData = $input.first().json;\n\nconst orderArray = formData[\"What Is the Order\"] || [];\nconst burgerType = Array.isArray(orderArray) ? orderArray[0] : orderArray;\n\n// Find sandwich quantity key dynamically\nconst qtyKey = Object.keys(formData).find(k => k !== \"What Is the Order\" && k !== \"submittedAt\" && k !== \"formMode\");\nconst quantity = formData[qtyKey] || 1;\n\nlet burgerUsed = 0;\nlet bunsUsed = 0;\nlet cheeseUsed = 0;\n\nif (burgerType && String(burgerType).toLowerCase().includes('cheese')) {\n  burgerUsed = 1 * quantity;\n  bunsUsed = 2 * quantity;\n  cheeseUsed = 1 * quantity;\n} else {\n  burgerUsed = 1 * quantity;\n  bunsUsed = 2 * quantity;\n  cheeseUsed = 0;\n}\n\nreturn [{ json: { burgerUsed, bunsUsed, cheeseUsed, burgerType, quantity } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        144,
+        -112
+      ],
+      "id": "87faeb91-fc3d-4d84-a122-19b2e610027c",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1wSt3jNUYPIqI943veVXQJEUdCD7V3QXnslL6xOHA7Hk",
+          "mode": "list",
+          "cachedResultName": "Stock",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wSt3jNUYPIqI943veVXQJEUdCD7V3QXnslL6xOHA7Hk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wSt3jNUYPIqI943veVXQJEUdCD7V3QXnslL6xOHA7Hk/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        352,
+        -48
+      ],
+      "id": "4831ce48-ae3c-4432-b1eb-11aced448fe9",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "tlQ9m9nr4m0uPPDq",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "829625517",
+        "text": "={{ $json['How Many Sandiwiches'] }} {{ $json['What Is the Order'][0] }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        160,
+        112
+      ],
+      "id": "4449693e-33ce-47e3-a47b-36fca24bf9ff",
+      "name": "Send a text message",
+      "webhookId": "5147def4-61cf-4125-b030-5da41b29a5bb",
+      "credentials": {
+        "telegramApi": {
+          "id": "BuGstyuvHotWP9Gn",
+          "name": "Orders"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "12esROTAnlnIBAAHB2cSazxccl3aPmlxe3GIExmh7jOI",
+          "mode": "list",
+          "cachedResultName": "orders 2",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12esROTAnlnIBAAHB2cSazxccl3aPmlxe3GIExmh7jOI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12esROTAnlnIBAAHB2cSazxccl3aPmlxe3GIExmh7jOI/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "type": "={{ $json[\"What Is the Order\"][0] }}",
+            "number": "={{ $json[\"How Many Sandiwiches\"] }}",
+            "Order": "={{ $json.submittedAt }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Order",
+              "displayName": "Order",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "type",
+              "displayName": "type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "number",
+              "displayName": "number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        176,
+        304
+      ],
+      "id": "1fa45c73-e30d-4cc9-bd10-1590df2ebc88",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "tlQ9m9nr4m0uPPDq",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "829625517",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1168,
+        0
+      ],
+      "id": "6813baec-6d7e-41e9-bdbe-8f2c18ca7447",
+      "name": "Send a text message1",
+      "webhookId": "8bd4a843-cd49-4711-8d41-8672871b0887",
+      "credentials": {
+        "telegramApi": {
+          "id": "CKnRyBesrxuQrUtP",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst lowItems = items.filter(row => Number(row.json.Number) <= 0);\n\nif (lowItems.length === 0) {\n  return [{ json: { hasAlert: false, message: 'some one ordered' } }];\n}\n\nconst names = lowItems.map(row => row.json.Item).join(', ');\nconst message = `⚠️ Stock Alert! Out of stock: ${names}. Please restock!`;\n\nreturn [{ json: { hasAlert: true, message: message } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        976,
+        80
+      ],
+      "id": "d89a879b-4fb9-481a-9f42-87233650fd84",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -16,
+        -336
+      ],
+      "id": "e5419eae-8fa2-4208-80e6-60ed89b176cb",
+      "name": "Telegram Trigger",
+      "webhookId": "980a2579-8fb2-425f-9bf6-95b4c466fdd5",
+      "credentials": {
+        "telegramApi": {
+          "id": "CKnRyBesrxuQrUtP",
+          "name": "Telegram account"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const message = $input.first().json.message.text;\n\nconst items = message.split(' ');\nconst inventory = {};\n\nfor (const item of items) {\n  const [name, quantity] = item.split(':');\n  if (name && quantity) {\n    inventory[name.trim().toLowerCase()] = parseInt(quantity.trim());\n  }\n}\n\nreturn [\n  { json: { item: 'Burger', number: inventory['burger'] || 0 } },\n  { json: { item: 'Cheese', number: inventory['cheese'] || 0 } },\n  { json: { item: 'Bun', number: inventory['bun'] || 0 } }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        176,
+        -512
+      ],
+      "id": "8b2fee18-65ad-456a-811c-3b93585378ab",
+      "name": "Code in JavaScript3"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Telegram message (e.g. \"burger:10 cheese:6 bun:30\")\nconst message = $('Telegram Trigger').first().json.message.text;\nconst items = message.split(' ');\nconst toAdd = {};\n\nfor (const item of items) {\n  const [name, quantity] = item.split(':');\n  if (name && quantity) {\n    toAdd[name.trim().toLowerCase()] = parseInt(quantity.trim());\n  }\n}\n\n// Add to current stock from Google Sheets\nconst result = [];\nfor (const row of $input.all()) {\n  const item = row.json.Item;\n  const currentStock = Number(row.json.Number);\n  const addAmount = toAdd[item.toLowerCase()] || 0;\n  const newStock = currentStock + addAmount;\n  result.push({ json: { Item: item, Number: newStock } });\n}\n\nreturn result;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        544,
+        -336
+      ],
+      "id": "cdbca84e-73cb-441f-9627-42f0c79f5346",
+      "name": "Code in JavaScript4"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1wSt3jNUYPIqI943veVXQJEUdCD7V3QXnslL6xOHA7Hk",
+          "mode": "list",
+          "cachedResultName": "Stock",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wSt3jNUYPIqI943veVXQJEUdCD7V3QXnslL6xOHA7Hk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wSt3jNUYPIqI943veVXQJEUdCD7V3QXnslL6xOHA7Hk/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        272,
+        -336
+      ],
+      "id": "098e2f4e-b3ac-4e93-aa4b-5984a739a79c",
+      "name": "Get row(s) in sheet1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "tlQ9m9nr4m0uPPDq",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1wSt3jNUYPIqI943veVXQJEUdCD7V3QXnslL6xOHA7Hk",
+          "mode": "list",
+          "cachedResultName": "Stock",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wSt3jNUYPIqI943veVXQJEUdCD7V3QXnslL6xOHA7Hk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wSt3jNUYPIqI943veVXQJEUdCD7V3QXnslL6xOHA7Hk/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Number": "={{ $json.Number }}",
+            "Item": "={{ $json.Item }}"
+          },
+          "matchingColumns": [
+            "Item"
+          ],
+          "schema": [
+            {
+              "id": "Item",
+              "displayName": "Item",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Number",
+              "displayName": "Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        720,
+        -336
+      ],
+      "id": "b2394e26-4269-4b81-ab83-89d258618cfd",
+      "name": "Update row in sheet1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "tlQ9m9nr4m0uPPDq",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        []
+      ]
+    },
+    "Update row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Send a text message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript4": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "80edaa93-849e-441e-a078-be370775ba16",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5f57232f68ecfe5be81495428d590a65e3e1cbd3d690ca6865d584e4e2b97c23"
+  },
+  "id": "HP9w4P7m7pdutu0n",
+  "tags": []
+}
