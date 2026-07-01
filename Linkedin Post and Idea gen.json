@@ -1,0 +1,895 @@
+{
+  "name": "Linkedin Post and Idea gen",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "##Description##\nYou are a LinkedIn idea creator for posts who will think about ideas in AI automation, n8n, Claude Code, and Codex that will make ideas for an AI agent to make a post.\n\n##instructios##\n1. you will not repeat any idea\n2. your idea must include how automation will help in Business, or the job of who will use it.\n3. the idea title mustnot include any emojs\n4. the tune is encouraging for people to work with me, to make them ai automation.\n\n## output##\n1. Idea title so we can register in google sheets\n2. description for the idea.\n3. and the third out is \"to do\" \n4. follow the required output "
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        544,
+        -592
+      ],
+      "id": "881ccf36-49fe-4914-9949-e42babedd6e2",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        512,
+        -368
+      ],
+      "id": "f5f5ac40-0230-437f-8d7a-7b5d91f3a521",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "4Ti0NtXuxe7IZgvp",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1BttFZFVmKbX-WwoZi2UJgJTdb1QRYCaRBBw-Gl6DyW0",
+          "mode": "list",
+          "cachedResultName": "Linkedin Posts",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1BttFZFVmKbX-WwoZi2UJgJTdb1QRYCaRBBw-Gl6DyW0/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1BttFZFVmKbX-WwoZi2UJgJTdb1QRYCaRBBw-Gl6DyW0/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Idea Title": "={{ $json.output.idea_title }}",
+            "Description": "={{ $json.output.description }}",
+            "Status": "todo"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Idea Title",
+              "displayName": "Idea Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Description",
+              "displayName": "Description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        864,
+        -384
+      ],
+      "id": "fb3b473d-c3c7-4b1e-b4ac-f4eb38e26069",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "KwNGREjbgxvQBHU4",
+          "name": "steven.tawfik"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"idea_title\": \"string\",\n  \"description\": \"string\",\n  \"status\": {\n  \"type\": \"string\",\n  \"enum\": [\"to do\"]\n}\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        736,
+        -336
+      ],
+      "id": "5e0e4035-3c69-40cb-951a-7689a5eca02b",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        336,
+        -544
+      ],
+      "id": "acd7c428-c518-49f4-a248-fa6c8b54ef62",
+      "name": "Telegram Trigger",
+      "webhookId": "9452bb8c-4901-4925-9ebe-6d78e3486338",
+      "credentials": {
+        "telegramApi": {
+          "id": "Ouy3Odc5sHOgLd6a",
+          "name": "steven_n8n"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer YOUR_TAVILY_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"{{ $('Append row in sheet').item.json['Idea Title'] }}\",\n  \"auto_parameters\": false,\n  \"topic\": \"general\",\n  \"search_depth\": \"basic\",\n  \"chunks_per_source\": 3,\n  \"max_results\": 3,\n  \"time_range\": null,\n  \"start_date\": \"2025-02-09\",\n  \"end_date\": \"2025-12-29\",\n  \"include_answer\": false,\n  \"include_raw_content\": false,\n  \"include_images\": false,\n  \"include_image_descriptions\": false,\n  \"include_favicon\": false,\n  \"include_domains\": [],\n  \"exclude_domains\": [],\n  \"country\": null,\n  \"include_usage\": false\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1056,
+        -288
+      ],
+      "id": "65106d02-57ae-40a0-972e-51b5ea8b7794",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1BttFZFVmKbX-WwoZi2UJgJTdb1QRYCaRBBw-Gl6DyW0",
+          "mode": "list",
+          "cachedResultName": "Linkedin Posts",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1BttFZFVmKbX-WwoZi2UJgJTdb1QRYCaRBBw-Gl6DyW0/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1BttFZFVmKbX-WwoZi2UJgJTdb1QRYCaRBBw-Gl6DyW0/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Status",
+              "lookupValue": "={{ $json.Status }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1008,
+        -576
+      ],
+      "id": "3b7c1df6-6d7f-42de-9193-eccb5426d3f7",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "KwNGREjbgxvQBHU4",
+          "name": "steven.tawfik"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Article1:{{ $json.results[0].content }}\nArticle2:{{ $json.results[1].content }}\nArticle3:{{ $json.results[2].content }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are a LinkedIn content writer who transforms source articles into polished, professional posts.\nYou will be given 3 articles. Your task is to synthesize their core ideas into a single, cohesive LinkedIn post â not a summary of each article separately, but one unified narrative or insight that ties them together.\nInstructions:\n\nIdentify the common thread, trend, or insight connecting the 3 articles. Lead with that, not with \"I read 3 articles about...\"\nWrite in a concise, professional tone that still feels inspiring and forward-looking â the reader should finish feeling motivated, not lectured.\nKeep the post between 100â180 words.\nUse a strong hook as the first line (a question, a bold statement, or a surprising stat).\nUse emojis sparingly and purposefully (3â6 total) â never decorative spam.\nEnd with 3â5 relevant, specific hashtags drawn from the articles' subject matter (avoid generic ones like #motivation).\nDo not fabricate facts, statistics, or quotes not present in the source articles.\nDo not mention \"article 1,\" \"article 2,\" etc.\nEnsure the JSON is valid â escape any double quotes or line breaks inside string values properly."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -208,
+        112
+      ],
+      "id": "c61ca66f-0907-48f1-a3b7-6be3b2e37d6a",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"post\": \"string\",\n  \"status\": \"done\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -32,
+        304
+      ],
+      "id": "204517fe-280a-4d3f-9bdc-7062fb0b2876",
+      "name": "Structured Output Parser1",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-4o-mini",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -208,
+        320
+      ],
+      "id": "28db65fc-487f-4c58-8914-64161a04c0de",
+      "name": "OpenRouter Chat Model1",
+      "credentials": {
+        "openRouterApi": {
+          "id": "4Ti0NtXuxe7IZgvp",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c2c10a4a-3cc4-4a26-9c76-26ca46eddbc0",
+              "name": "output.status",
+              "value": "={{ $('Get row(s) in sheet').item.json.row_number }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        96,
+        -48
+      ],
+      "id": "2a030d8b-3989-46d3-9065-f04545fc233b",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1BttFZFVmKbX-WwoZi2UJgJTdb1QRYCaRBBw-Gl6DyW0",
+          "mode": "list",
+          "cachedResultName": "Linkedin Posts",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1BttFZFVmKbX-WwoZi2UJgJTdb1QRYCaRBBw-Gl6DyW0/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1BttFZFVmKbX-WwoZi2UJgJTdb1QRYCaRBBw-Gl6DyW0/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Status": "=success",
+            "row_number": "={{ $('Get row(s) in sheet').item.json.row_number }}"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "Idea Title",
+              "displayName": "Idea Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Description",
+              "displayName": "Description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        256,
+        -32
+      ],
+      "id": "1ab55225-ea85-4188-8bc2-5ec36c79aebe",
+      "name": "Update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "KwNGREjbgxvQBHU4",
+          "name": "steven.tawfik"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.message.text }}",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        624,
+        -352
+      ],
+      "id": "6d4841e8-eccc-4e58-9f05-9b3e15e17b81",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "57f11fcb-cf50-4933-9b1f-659ce5f6f129",
+              "name": "output.post",
+              "value": "={{ $json.output }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        64,
+        176
+      ],
+      "id": "015280b0-5f63-4141-b05f-eb90ea92eeca",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "dab8ab93-8ec7-415d-8469-2f6cf2b96b1a",
+              "name": "clean post",
+              "value": "={{ $json.output.post.replace(/\\n/g, '\\\\n').replace(/\"/g, '\\\\\"') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        176
+      ],
+      "id": "a43d4222-31b2-47b9-ac37-889124cc6504",
+      "name": "clean post"
+    },
+    {
+      "parameters": {
+        "content": "##Create New Idea",
+        "height": 496,
+        "width": 992
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        224,
+        -624
+      ],
+      "typeVersion": 1,
+      "id": "df8d2465-49b3-4cb6-9d7d-ce3c4770b1e0",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "##AI post ",
+        "height": 560,
+        "width": 1296,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -608,
+        -112
+      ],
+      "typeVersion": 1,
+      "id": "165a6f97-0367-4d31-b6a2-4cf14e957732",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.linkedin.com/v2/ugcPosts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Restli-Protocol-Version",
+              "value": "2.0.0"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"author\": \"urn:li:person:flmlZhKNCi\",\n  \"lifecycleState\": \"PUBLISHED\",\n  \"specificContent\": {\n    \"com.linkedin.ugc.ShareContent\": {\n      \"shareCommentary\": {\n        \"text\": \"{{ $('clean post').item.json['clean post'] }}\"\n      },\n      \"shareMediaCategory\": \"IMAGE\",\n      \"media\": [\n        {\n          \"status\": \"READY\",\n          \"media\": \"{{ $('Register Upload').item.json.value.asset }}\"\n        }\n      ]\n    }\n  },\n  \"visibility\": {\n    \"com.linkedin.ugc.MemberNetworkVisibility\": \"PUBLIC\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1568,
+        0
+      ],
+      "id": "d969e662-6731-4af1-ae17-d7cdce76f12e",
+      "name": "Linkedin to Post",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "se0H2x6CWD80nUaZ",
+          "name": "LinkedIn Personal"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/images",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openRouterApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"google/gemini-3.1-flash-image\",\n\"prompt\": \"create animage that follows this :{{ $('AI Agent').item.json.output.description }}â professional LinkedIn banner, clean modern style, vibrant colors, no text overlays\"\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        720,
+        0
+      ],
+      "id": "25607b34-436b-4ecf-9828-ec7a458dfe10",
+      "name": "image gen",
+      "credentials": {
+        "openRouterApi": {
+          "id": "4Ti0NtXuxe7IZgvp",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "sourceProperty": "data[0].b64_json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        912,
+        0
+      ],
+      "id": "d1b23ea0-6aa0-439a-9c1b-46101ba0a7bf",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $json.value.uploadMechanism['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest'].uploadUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "image/jpeg"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1360,
+        0
+      ],
+      "id": "5aab463a-b977-4124-85c8-d9ba456cf798",
+      "name": "HTTP Request2",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "se0H2x6CWD80nUaZ",
+          "name": "LinkedIn Personal"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.linkedin.com/v2/assets?action=registerUpload",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Restli-Protocol-Version",
+              "value": "2.0.0"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"registerUploadRequest\": {\n    \"recipes\": [\"urn:li:digitalmediaRecipe:feedshare-image\"],\n    \"owner\": \"urn:li:person:flmlZhKNCi\",\n    \"serviceRelationships\": [\n      {\n        \"relationshipType\": \"OWNER\",\n        \"identifier\": \"urn:li:userGeneratedContent\"\n      }\n    ]\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1056,
+        0
+      ],
+      "id": "00d3784a-e275-4d02-93a2-b5c912ecc8f9",
+      "name": "Register Upload",
+      "credentials": {
+        "linkedInOAuth2Api": {
+          "id": "H8de3MVK5xglPbye",
+          "name": "LinkedIn account"
+        },
+        "oAuth2Api": {
+          "id": "se0H2x6CWD80nUaZ",
+          "name": "LinkedIn Personal"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Image Generation ",
+        "height": 560,
+        "width": 1088,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        688,
+        -112
+      ],
+      "typeVersion": 1,
+      "id": "b57b40d8-6f31-434a-9623-e73885223f5e",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const registerData = $input.item.json;\nconst binaryData = $('Convert to File').item.binary;\n\nreturn [{\n  json: registerData,\n  binary: binaryData\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        0
+      ],
+      "id": "31a0317e-1055-41bb-b0e7-abe385c18f82",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser1": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "clean post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "clean post": {
+      "main": [
+        [
+          {
+            "node": "image gen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update row in sheet": {
+      "main": [
+        []
+      ]
+    },
+    "image gen": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Register Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Register Upload": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request2": {
+      "main": [
+        [
+          {
+            "node": "Linkedin to Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "a998e7d1-02ee-42b2-9667-3d495ba32a8a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f58b4c80a25fc684e76aad275516e641b71fb1103a2a18796d73dd89ddc95386"
+  },
+  "id": "LKlF5pOWaFmmta3M",
+  "tags": []
+}
